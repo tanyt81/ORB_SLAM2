@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="playback" default="true" />	
+  <arg name="start_time" default="-s 200" />
+  <arg name="bagfile" default="/home/yetan/Projects/mini_rover/field_test/2018-04-09/2018-04-09-16-53-23_image_raw.bag" />
+
+  <arg name="WS" default="/home/yetan/git/catkin_ws/src" />
+  <arg name="CAMERA_NAME" default="miniRover" />
+  <arg name="CAMERA_DEVICE_ID" default="0" />
+  <arg name="WIDTH" default="1280" />
+  <arg name="HEIGHT" default="720" />
+  <arg name="FRAMERATE" default="30" />
+
+  <arg name="VOCA_FILE" default="$(arg WS)/ORB_SLAM2/Vocabulary/ORBvoc.txt" />
+  <arg name="CAM_FILE" default="$(arg WS)/ORB_SLAM2/Examples/Monocular/miniRover_mixed.yaml" />
+  
+
+  <!-- start the cv_camera -->
+  <node respawn="true" pkg="cv_camera" type="cv_camera_node" name="camera" unless="$(arg playback)">
+    <param name="device_id" value="$(arg CAMERA_DEVICE_ID)" type="int"/>
+    <param name="rate" value="30" type="int"/>
+  </node>
+
+  <!-- start the rosbag playback -->
+  <node pkg="rosbag" type="play" name="player" args="$(arg start_time) $(arg bagfile)" if="$(arg playback)"/>
+
+  <!-- start the orb-slam2 node -->
+  <node respawn="true" pkg="ORB_SLAM2" type="Mono" args="$(arg VOCA_FILE) $(arg CAM_FILE)" name="orb_slam2"/>
+
+</launch>
