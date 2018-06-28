@@ -15,6 +15,7 @@
   <arg name="VOCA_FILE" default="$(arg WS)/ORB_SLAM2/Vocabulary/ORBvoc.txt" />
   <arg name="CAM_FILE" default="$(arg WS)/ORB_SLAM2/Examples/Monocular/miniRover_mixed.yaml" />
   
+  <env name="ROS_PACKAGE_PATH" value="$(optenv ROS_PACKAGE_PATH /home/yetan/git/catkin_ws/src/ORB_SLAM2/Examples/ROS)" />
 
   <!-- start the cv_camera -->
   <node respawn="true" pkg="cv_camera" type="cv_camera_node" name="camera" unless="$(arg playback)">
