@@ -22,11 +22,14 @@
     <param name="device_id" value="$(arg CAMERA_DEVICE_ID)" type="int"/>
     <param name="rate" value="30" type="int"/>
   </node>
+  
+  <!-- start the static transform publisher -->
+  <node pkg="tf" type="static_transform_publisher" name="wf_transform_publisher" args="0 0 0 0 0 0 map camera_pose 100" />
 
   <!-- start the rosbag playback -->
   <node pkg="rosbag" type="play" name="player" args="$(arg start_time) $(arg bagfile)" if="$(arg playback)"/>
 
   <!-- start the orb-slam2 node -->
-  <node respawn="true" pkg="ORB_SLAM2" type="Mono" args="$(arg VOCA_FILE) $(arg CAM_FILE)" name="orb_slam2"/>
+  <node respawn="true" pkg="ORB_SLAM2" type="Mono" args="$(arg VOCA_FILE) $(arg CAM_FILE)" name="orb_slam2" output="screen"/>
 
 </launch>

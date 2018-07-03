@@ -26,6 +26,8 @@
 
 #include<ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <tf/tf.h>
 
 #include<opencv2/core/core.hpp>
 
@@ -36,11 +38,23 @@ using namespace std;
 class ImageGrabber
 {
 public:
-    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
+    ImageGrabber(ORB_SLAM2::System* pSLAM, ros::NodeHandle nh):mpSLAM(pSLAM){
+    	Rwc = cv::Mat::zeros(3,3, CV_32F);
+    	twc = cv::Mat::zeros(3,1,CV_32F);
+    	rm = tf::Matrix3x3();
+
+    	pub_ = nh.advertise<geometry_msgs::PoseStamped>("camera_pose",1);
+    }
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
     ORB_SLAM2::System* mpSLAM;
+
+    ros::Publisher pub_;
+
+    cv::Mat Rwc;
+    cv::Mat twc;
+    tf::Matrix3x3 rm;
 };
 
 int main(int argc, char **argv)
@@ -58,9 +72,10 @@ int main(int argc, char **argv)
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
 
-    ImageGrabber igb(&SLAM);
-
     ros::NodeHandle nodeHandler;
+    ImageGrabber igb(&SLAM, nodeHandler);
+
+
     ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage,&igb);
 
     ros::spin();
@@ -90,7 +105,39 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
 
-    mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+    cv::Mat cp = mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+
+    if(!cp.empty())
+    {
+    	Rwc = cp.rowRange(0,3).colRange(0,3);
+    	twc = -Rwc.t()*cp.rowRange(0,3).col(3);
+    	cout << "pos= " << twc << endl << endl;
+
+    	rm.setValue(
+    			Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
+				Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
+				Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2)
+    	);
+
+    	tf::Quaternion qt;
+    	rm.getRotation(qt);
+
+    	geometry_msgs::PoseStamped c_pose;
+    	c_pose.header.stamp = ros::Time::now();
+    	c_pose.header.frame_id = "camera_pose";
+    	c_pose.pose.position.x = twc.at<float>(0,0);
+    	c_pose.pose.position.y = twc.at<float>(0,1);
+    	c_pose.pose.position.z = twc.at<float>(0,2);
+    	c_pose.pose.orientation.x = qt.x();
+    	c_pose.pose.orientation.y = qt.y();
+    	c_pose.pose.orientation.z = qt.z();
+    	c_pose.pose.orientation.w = qt.w();
+    	pub_.publish(c_pose);
+    }
+    else
+    {
+    	cout << "no tracking data" << endl;
+    }
 }
 
 
